@@ -252,13 +252,17 @@ final class SnoreMonitor: NSObject, ObservableObject {
 
     private static func closestWindow(to seconds: Double, in constraint: SNTimeDurationConstraint) -> CMTime {
         let target = CMTime(seconds: seconds, preferredTimescale: 48_000)
-        switch constraint.type {
-        case .enumeratedDurations:
-            let options = constraint.enumeratedDurations.map { $0.timeValue }
-            return options.min { abs($0.seconds - seconds) < abs($1.seconds - seconds) } ?? target
-        case .durationRange:
-            let r = constraint.durationRange
-            return CMTimeClampToRange(target, range: r)
+        switch constraint {
+        case .enumeratedDurations(let options):
+            var best = target
+            var bestDiff = Double.greatestFiniteMagnitude
+            for option in options {
+                let diff = abs(option.seconds - seconds)
+                if diff < bestDiff { bestDiff = diff; best = option }
+            }
+            return best
+        case .durationRange(let range):
+            return CMTimeClampToRange(target, range: range)
         @unknown default:
             return target
         }
